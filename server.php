@@ -6,10 +6,14 @@ if ($_POST['action'] == 'registration_form'){
     registration();
 } elseif ($_POST['action'] == 'login_form') {
    login();
+} elseif ($_POST['action'] == 'update_user_info_form'){
+    update();
 }
 
 
 function registration () {
+    global $conn;
+
     $firtsname       = $_POST["firstname"];
     $lastname        = $_POST["lastname"];
     $email           = $_POST["email"];
@@ -57,15 +61,12 @@ function registration () {
         }
     }
     
-    
-    $_SESSION['errors'] = $errors;
-    
-    
-    
     if($valid === false){
+       $_SESSION['errors'] = $errors;
        header("location: /php_lessons/index.php");
        exit();
     }
+
     $password   = password_hash($password, PASSWORD_DEFAULT);
     $created    = date("Y-m-d");
     $insert_sql = "INSERT INTO users (firstname, lastname, email, password, created) VALUES('$firtsname', '$lastname', '$email', '$password', '$created')";
@@ -133,6 +134,94 @@ function login () {
         }
     }
     
+
+}
+
+function update() {
+     global $conn;
+    $firstname       = $_POST["firstname"];
+    $lastname        = $_POST["lastname"];
+    $email           = $_POST["email"];
+    
+    $valid  = true;
+    $errors = [];
+
+
+    if($firstname == ''){
+        $valid = false;
+        $errors["firstname"] = "The field is empty";
+    }
+
+    if ($lastname == ''){
+        $valid = false;
+        $errors["lastname"] = "The field is empty";
+    }
+    if($email == ''){
+        $valid = false;
+        $errors["email"] = "The field is empty";
+
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $valid = false;
+        $errors['email'] = "Invalid email format";
+    }
+ 
+  
+    if($valid === false){
+         $_SESSION["errors"] = $errors;
+         header("location: /php_lessons/profile.php");
+         exit();
+    } else{
+
+        $select_sql = "SELECT * FROM users WHERE email = '$email' ";
+        $result     = $conn->query($select_sql);
+
+        if ($result->num_rows > 0) {
+            $user_data   = $result->fetch_all(MYSQLI_ASSOC);
+
+            if($result->num_rows == 1) {
+
+                $user_id    = $user_data[0]['id'];
+                $my_user_id = $_SESSION["user_data"][0]["id"];
+
+                if ($user_id != $my_user_id){
+
+                    $valid = false;
+                    $errors['email']     = "Another user exist with this email";
+                    
+                }
+                  
+            } elseif ($result->num_rows > 1) {
+                
+                $valid = false;
+                $errors['email']  = "Another user exist with this email";
+                  
+            }
+
+        }
+
+
+        if ($valid === false){
+
+            $_SESSION['errors']  = $errors;
+            header("location: /php_lessons/profile.php");
+            exit();
+
+        } else {
+            $user_id = $_SESSION["user_data"][0]["id"];
+            $update_sql = "UPDATE users SET firstname = '$firstname', lastname = '$lastname', email = '$email' WHERE id = $user_id ";
+
+            if ($conn->query($update_sql) === true) {
+                $_SESSION['update_sucess'] = true;
+                header("location: /php_lessons/profile.php");
+                exit();
+
+
+            }
+
+        }
+
+        
+    }
 
 }
 
